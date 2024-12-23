@@ -12,30 +12,33 @@ COLORS = {
     "black": "#000000"
 }
 SPECIAL_CARDS = ["skip", "reverse", "+2", "wild", "wild+4"]
-ARROWS_IMAGE_PATH = "arrows.jpg"  # Arrows image path
+ARROWS_IMAGE_PATH = "../uno_cards/arrows.png"  # Arrows image path
 
 def create_base_card(base_color, text, save_path, is_special=False):
     """
-    Creates a base UNO card with rounded corners, center ovals, and proper symbols.
+    Creates a base UNO card with transparent corners, center ovals, and proper symbols.
     Args:
         base_color (str): Card color.
         text (str): Text or symbol to display.
         save_path (str): File path to save the card image.
         is_special (bool): True for special cards like "skip" or "reverse".
     """
-    # Create a blank card image
-    image = Image.new("RGBA", (CARD_WIDTH, CARD_HEIGHT), "white")
+    # Create a blank RGBA card image
+    image = Image.new("RGBA", (CARD_WIDTH, CARD_HEIGHT), (0, 0, 0, 0))
     draw = ImageDraw.Draw(image)
 
-    # Draw card border with rounded corners
-    border_color = "black"
-    draw.rounded_rectangle(
+    # Create a mask for rounded corners
+    mask = Image.new("L", (CARD_WIDTH, CARD_HEIGHT), 0)
+    mask_draw = ImageDraw.Draw(mask)
+    mask_draw.rounded_rectangle(
         [0, 0, CARD_WIDTH - 1, CARD_HEIGHT - 1],
         radius=20,
-        fill=base_color,
-        outline=border_color,
-        width=4
+        fill=255
     )
+
+    # Draw card background with transparent corners
+    card = Image.new("RGBA", (CARD_WIDTH, CARD_HEIGHT), base_color)
+    image.paste(card, (0, 0), mask)
 
     # Add white central oval
     oval_margin = 20
@@ -53,7 +56,7 @@ def create_base_card(base_color, text, save_path, is_special=False):
         font_small = ImageFont.load_default()
 
     # Text color
-    text_color = "black" if base_color == COLORS["yellow"] else "white"
+    text_color = "black"
 
     # Draw large central text
     text_bbox = draw.textbbox((0, 0), text, font=font_large)
@@ -70,7 +73,7 @@ def create_base_card(base_color, text, save_path, is_special=False):
     draw.text((CARD_WIDTH - text_width - corner_offset, CARD_HEIGHT - text_height - corner_offset),
               text, font=font_small, fill=text_color)
 
-    # Save the base card
+    # Save the card
     image.save(save_path)
 
 def overlay_arrows_on_reverse(card_image_path, save_path):
@@ -84,7 +87,7 @@ def overlay_arrows_on_reverse(card_image_path, save_path):
     arrows_image = Image.open(ARROWS_IMAGE_PATH).convert("RGBA")
 
     # Resize arrows to fit the card
-    arrows_resized = arrows_image.resize((CARD_WIDTH // 2, CARD_HEIGHT // 2))
+    arrows_resized = arrows_image.resize((CARD_WIDTH, CARD_HEIGHT))
 
     # Center position for the arrows
     position = (
@@ -120,7 +123,9 @@ def generate_uno_deck(output_folder="uno_cards"):
         for special in ["skip", "reverse", "+2"]:
             file_name = f"{color_name}_{special}.png"
             save_path = os.path.join(output_folder, file_name)
-            create_base_card(color_code, special, save_path)
+            if special == "reverse":
+                create_base_card(color_code, "", save_path)
+            else: create_base_card(color_code, special, save_path)
 
             # If it's a reverse card, overlay the arrows
             if special == "reverse":
