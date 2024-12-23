@@ -15,7 +15,7 @@ class Player:
 
 pygame.init()
 
-screen = pygame.display.set_mode((1080,500))
+screen = pygame.display.set_mode((2240,500))
 pygame.display.set_caption("UNO")
 clock = pygame.time.Clock()
 colours = ["red", "blue", "green", "yellow"]
@@ -73,7 +73,6 @@ def main():
             if event.type == pygame.MOUSEBUTTONDOWN:
                 turn()
         screen.fill("black")
-
 
 
         pygame.display.update()
