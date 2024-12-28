@@ -1,5 +1,4 @@
 import sys
-from time import sleep
 import pygame
 import random
 
@@ -31,6 +30,7 @@ players = []
 deck = []
 discard = []
 player_turn = 0 #Number of player whose turn it currently is
+reverse = False
 
 card_back = pygame.image.load("back.png")
 
@@ -95,10 +95,6 @@ def create_deck(): #Makes the deck with all the appropriate cards
             deck.append((colour, j))
     random.shuffle(deck)
 
-def turn():
-    for player in players:
-        print(player.hand)
-
 
 def end_of_deck(): #If all the cards in the deck have been used, take all the cards in the discard pile and shuffle
     for card in discard:
@@ -135,6 +131,18 @@ def card_hider(): #A function to blank the screen to hide a player's cards from 
         clock.tick(60)
     return
 
+def turn():
+    x = 0
+    y = 0
+    for card in players[0].hand:
+        to_blit_colour, to_blit_number = players[0].hand[card]
+        to_blit = pygame.image.load(f"uno_cards\\{to_blit_colour}_{to_blit_number}.png")
+        screen.blit(to_blit, (x,y))
+        pygame.display.flip()
+        clock.tick(60)
+        x += 50
+
+
 def main(): #The main game rendering loop
     create_game()
     running = True
@@ -148,8 +156,8 @@ def main(): #The main game rendering loop
 
         pygame.display.update()
         clock.tick(60)
-
-        card_hider()
+        turn()
+        #card_hider()
 
 
 if __name__ == "__main__": #Ctrl-C error handling and initialisation of the game
