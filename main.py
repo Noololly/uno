@@ -2,8 +2,6 @@ import sys
 import pygame
 import random
 
-
-
 class Player: #Player class
     def __init__(self, deck, player_number):
         self.hand = {}
@@ -12,7 +10,7 @@ class Player: #Player class
 
 
     def deal_hand(self, deck): #Deals the player's hand
-        for i in range(7):
+        for i in range(7): #number of cards dealt at the start of an uno game
             card = deck.pop()
             self.hand[i] = card
 
@@ -23,19 +21,27 @@ screen = pygame.display.set_mode((1000, 1000))
 pygame.display.set_caption("UNO")
 
 clock = pygame.time.Clock()
-
+screen.fill("black")
 colours = ["red", "blue", "green", "yellow"]
-numbers = ["_0", "_1", "_2", "_3", "_4", "_5", "_6", "_7", "_8", "_9", "_skip", "_reverse", "_+2"]
-players = []
-deck = []
-discard = []
+numbers = ["_0", "_1", "_2", "_3", "_4", "_5", "_6", "_7", "_8", "_9", "_skip", "_reverse", "_+2"] #lists of the colours and numbers of the cards
+cards = {} #a dict to store all instances of the card images
+players = [] #list of instances of players
+deck = [] #list of cards in the draw pile
+discard = [] #list of cards in the discard pile
 player_turn = 0 #Number of player whose turn it currently is
-reverse = False
+reverse = False #bool storing direction of play
 
 card_back = pygame.image.load("back.png")
 
 font = pygame.font.Font(None, 32)
 
+def load_cards(): #loads all the card image files into the cards dict
+    for colour in colours:
+        for number in numbers:
+            name = colour + number
+            cards[name] = pygame.image.load(f"uno_cards\\{colour}{number}.png") #loads most of the cards
+    cards["wild_wild"] = pygame.image.load("uno_cards/wild_wild.png")
+    cards["wild_+4"] = pygame.image.load("uno_cards/wild_+4.png") #loads the two wild cards
 
 def create_game(): #Function to create the game and display a nice GUI to enter the number of players
     input_rect = pygame.Rect(400, 250, 250, 35)
@@ -54,7 +60,6 @@ def create_game(): #Function to create the game and display a nice GUI to enter 
                         user_number = int(user_text)
                         if 0 < user_number <= 10:
                             player_number = user_number
-                            print(f"Number of players: {player_number}")
                             break
                         else:
                             user_text = ''
@@ -78,7 +83,6 @@ def create_game(): #Function to create the game and display a nice GUI to enter 
     for i in range(player_number):
         players.append(Player(deck, i)) #Create the players. Gives each player a number in which order of turn they will be in
 
-
 def create_deck(): #Makes the deck with all the appropriate cards
     for i in range(3):
         deck.append(("wild", "wild"))
@@ -94,7 +98,11 @@ def create_deck(): #Makes the deck with all the appropriate cards
         for j in range(1,10):
             deck.append((colour, j))
     random.shuffle(deck)
-
+    while True:
+        discard.append(deck.pop()) #add first card to the discard pile to allow gameplay to start
+        _ , number = discard[-1]
+        if isinstance(number, int):
+            break
 
 def end_of_deck(): #If all the cards in the deck have been used, take all the cards in the discard pile and shuffle
     for card in discard:
@@ -131,37 +139,43 @@ def card_hider(): #A function to blank the screen to hide a player's cards from 
         clock.tick(60)
     return
 
-def turn():
-    x = 0
-    y = 0
-    for card in players[0].hand:
-        to_blit_colour, to_blit_number = players[0].hand[card]
-        to_blit = pygame.image.load(f"uno_cards\\{to_blit_colour}_{to_blit_number}.png")
-        screen.blit(to_blit, (x,y))
-        pygame.display.flip()
-        clock.tick(60)
-        x += 50
+def top_discard(): #gets the top card from the discard pile and turns it into the image object
+    colour, number = discard[-1]
+    card = colour + "_" +str(number)
+    return cards[card]
 
+def turn():
+    x = 50
+    y = 700
+    for card in players[player_turn].hand:
+        to_blit_colour, to_blit_number = players[player_turn].hand[card]
+        to_blit = to_blit_colour + "_" + str(to_blit_number)
+        to_blit = cards[to_blit]
+        screen.blit(to_blit, (x,y))
+        x += 100
+    screen.blit(card_back, (400, 300))
+    screen.blit(top_discard(), (600, 300))
+    pygame.display.update()
+    clock.tick(60)
 
 def main(): #The main game rendering loop
     create_game()
     running = True
+    screen.fill("black")
     while running:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 running = False
-            if event.type == pygame.MOUSEBUTTONDOWN:
-                turn()
-        screen.fill("black")
+
 
         pygame.display.update()
         clock.tick(60)
         turn()
         #card_hider()
 
-
 if __name__ == "__main__": #Ctrl-C error handling and initialisation of the game
     try:
+        load_cards()
         main()
     except KeyboardInterrupt:
         pass
