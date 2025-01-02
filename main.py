@@ -1,7 +1,35 @@
 import sys
 import pygame
 import random
-from time import sleep
+
+#Initialise EVERYTHING
+pygame.init()
+
+screen = pygame.display.set_mode(
+    (1000, 1000))
+pygame.display.set_caption("UNO")
+
+clock = pygame.time.Clock()
+screen.fill("black")
+colours = ["red", "blue", "green", "yellow"]
+numbers = ["_0", "_1", "_2", "_3", "_4", "_5", "_6", "_7", "_8", "_9", "_skip", "_reverse", "_+2"] #lists of the colours and numbers of the cards
+
+"""
+Constants
+"""
+cards = {} #a dict to store all instances of the card images
+players = [] #list of instances of players
+deck = [] #list of cards in the draw pile
+discard = [] #list of cards in the discard pile
+player_turn = 0 #Number of player whose turn it currently is
+reverse = False #bool storing direction of play
+WILD = "wild"
+PLUS_FOUR = "+4"
+DISCARD_POSITION = (600, 300)
+
+card_back = pygame.image.load("back.png")
+
+font = pygame.font.Font(None, 32) #loads the font
 
 class Player: #Player class
     def __init__(self, deck, player_number):
@@ -14,28 +42,6 @@ class Player: #Player class
         for i in range(7): #number of cards dealt at the start of an uno game
             card = deck.pop()
             self.hand[i] = card
-
-#Initialise EVERYTHING
-pygame.init()
-
-screen = pygame.display.set_mode((1000, 1000))
-pygame.display.set_caption("UNO")
-
-clock = pygame.time.Clock()
-screen.fill("black")
-colours = ["red", "blue", "green", "yellow"]
-numbers = ["_0", "_1", "_2", "_3", "_4", "_5", "_6", "_7", "_8", "_9", "_skip", "_reverse", "_+2"] #lists of the colours and numbers of the cards
-cards = {} #a dict to store all instances of the card images
-players = [] #list of instances of players
-deck = [] #list of cards in the draw pile
-discard = [] #list of cards in the discard pile
-player_turn = 0 #Number of player whose turn it currently is
-reverse = False #bool storing direction of play
-
-card_back = pygame.image.load("back.png")
-
-font = pygame.font.Font(None, 32) #loads the font
-
 
 def calculate_x_increment():
     card_quantity = len(players[player_turn].hand)
@@ -142,7 +148,7 @@ def card_hider(): #A function to blank the screen to hide a player's cards from 
 
         screen.fill("black")
 
-        player_turn_text = font.render(f"It is player {player_turn}'s turn", True, (255,255,255))
+        player_turn_text = font.render(f"It is player {player_turn + 1}'s turn", True, (255,255,255))
         screen.blit(player_turn_text, (player_turn_rect.x, player_turn_rect.y))
 
         pygame.draw.rect(screen, "white", button)
@@ -160,7 +166,7 @@ def top_discard(): #gets the top card from the discard pile and turns it into th
     colour, number = discard[-1]
     card = colour + "_" +str(number)
     return cards[card]
-#TODO get this function working
+
 def detect_clicked_card(): #Detects which card the user clicks on and returns its index in the player.hand list
                            #Returns -1 if no card was clicked on
     CARD_WIDTH = 200
@@ -169,14 +175,42 @@ def detect_clicked_card(): #Detects which card the user clicks on and returns it
     x_increment = calculate_x_increment()
     card_quantity = len(players[player_turn].hand)
 
-    current_x = BORDER_WIDTH
-    mouse_x, mouse_y = pygame.mouse.get_pos()
+    mouse_x, _ = pygame.mouse.get_pos()
 
-    for i in range(card_quantity):
-        if current_x <= mouse_x < current_x + CARD_WIDTH:
+    for i in range(card_quantity - 1, -1, -1):
+        card_x_start = BORDER_WIDTH + i * x_increment
+        card_x_end = card_x_start + CARD_WIDTH
+
+        if card_x_start <= mouse_x < card_x_end:
             return i
-        current_x += x_increment
-    return -1
+
+def update_discard(card_colour, card_number): #updates top card of the discard pile
+    discard.append((card_colour, card_number))
+
+def render_discard(): #renders top card of the discard pile
+    discard_card = top_discard()
+    screen.blit(discard_card, DISCARD_POSITION)
+    pygame.display.update()
+    clock.tick(60)
+
+def is_card_placeable(card_colour, card_number): #checks if card is placeable
+    top_card_colour, top_card_number = discard[-1]
+    return (
+            card_colour == WILD or
+            top_card_colour == card_colour or
+            top_card_number == card_number or
+            top_card_number == WILD
+    )
+
+def check_placeable(card_colour, card_number): #calls is_card_placeable, if it is, then the discard pile is rendered again with the placed card on top
+    if is_card_placeable(card_colour, card_number):
+        update_discard(card_colour, card_number)
+        render_discard()
+        return True
+    else:
+        return False
+
+
 
 def turn():
     screen.fill("black")
@@ -184,16 +218,35 @@ def turn():
     screen.blit(player_turn_text, (0,0)) #Creats and displays the text showing the current player
     x = 50 #x coordinate for first card allowing 50px buffer
     y = 700 #y coordinate for all cards
-    for card in players[player_turn].hand:
-        to_blit_colour, to_blit_number = players[player_turn].hand[card]
+    for card_index in players[player_turn].hand.keys():
+        card = players[player_turn].hand[card_index] #retrieve the card from the player's hand
+        to_blit_colour, to_blit_number = card
         to_blit = to_blit_colour + "_" + str(to_blit_number)
         to_blit = cards[to_blit]
         screen.blit(to_blit, (x,y)) #displays all cards in the current player's hand
         x += calculate_x_increment() #calculates the increment for x with the number of cards in their hand
+
+    #Render draw and discard pile
     screen.blit(card_back, (400, 300))
     screen.blit(top_discard(), (600, 300)) #displays the top card in the discard pile to allow players to know what they can place down.
     pygame.display.update()
     clock.tick(60)
+    taking_turn = True
+    while taking_turn:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit()
+                sys.exit()
+            if event.type == pygame.MOUSEBUTTONDOWN:
+                if event.button == 1:
+                    _, pos_y = pygame.mouse.get_pos()
+                    if pos_y > 700:
+                        card_index = detect_clicked_card()
+                        if card_index is not None:
+                            card_colour, card_number = players[player_turn].hand[card_index]
+                            check_placeable(card_colour, card_number)
+                            taking_turn = False
+                    else: print("not a card")
 
 def main(): #The main game rendering loop
     global player_turn
@@ -209,18 +262,17 @@ def main(): #The main game rendering loop
         pygame.display.update()
         clock.tick(60)
         turn()
-        #TODO fix broken player counters
+        #Adjusts player_turn based on direction of play
         if reverse:
-            player_turn -= 1
+            player_turn = (player_turn - 1) % len(players) #the mod handles the wrap around to allow the players to go around in a circle like in a normal game
         else:
-            player_turn += 1
+            player_turn = (player_turn + 1) % len(players)
 
         if player_turn < 0: #checks to see if the player counter goes out of range and corrects if it does
-            player_turn = len(players)
+            player_turn = len(players) - 1
         elif player_turn > len(players):
             player_turn = 0
 
-        sleep(3)
         card_hider()
 
 if __name__ == "__main__": #Ctrl-C error handling and initialisation of the game
