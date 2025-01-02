@@ -1,6 +1,7 @@
 import sys
 import pygame
 import random
+from time import sleep
 
 class Player: #Player class
     def __init__(self, deck, player_number):
@@ -33,7 +34,23 @@ reverse = False #bool storing direction of play
 
 card_back = pygame.image.load("back.png")
 
-font = pygame.font.Font(None, 32)
+font = pygame.font.Font(None, 32) #loads the font
+
+
+def calculate_x_increment():
+    card_quantity = len(players[player_turn].hand)
+    screen_width = pygame.display.get_window_size()[0]
+
+    # Constants
+    CARD_WIDTH = 200  # Width of each card
+    BORDER_WIDTH = 50  # Left and right borders
+
+    # Calculate usable width
+    usable_width = screen_width - 2 * BORDER_WIDTH
+
+    x_increment = (usable_width - CARD_WIDTH) / (card_quantity - 1)
+
+    return x_increment
 
 def load_cards(): #loads all the card image files into the cards dict
     for colour in colours:
@@ -143,22 +160,43 @@ def top_discard(): #gets the top card from the discard pile and turns it into th
     colour, number = discard[-1]
     card = colour + "_" +str(number)
     return cards[card]
+#TODO get this function working
+def detect_clicked_card(): #Detects which card the user clicks on and returns its index in the player.hand list
+                           #Returns -1 if no card was clicked on
+    CARD_WIDTH = 200
+    BORDER_WIDTH = 50
+
+    x_increment = calculate_x_increment()
+    card_quantity = len(players[player_turn].hand)
+
+    current_x = BORDER_WIDTH
+    mouse_x, mouse_y = pygame.mouse.get_pos()
+
+    for i in range(card_quantity):
+        if current_x <= mouse_x < current_x + CARD_WIDTH:
+            return i
+        current_x += x_increment
+    return -1
 
 def turn():
-    x = 50
-    y = 700
+    screen.fill("black")
+    player_turn_text = font.render(f"Player {player_turn+1}'s turn", True, (255,255,255))
+    screen.blit(player_turn_text, (0,0)) #Creats and displays the text showing the current player
+    x = 50 #x coordinate for first card allowing 50px buffer
+    y = 700 #y coordinate for all cards
     for card in players[player_turn].hand:
         to_blit_colour, to_blit_number = players[player_turn].hand[card]
         to_blit = to_blit_colour + "_" + str(to_blit_number)
         to_blit = cards[to_blit]
-        screen.blit(to_blit, (x,y))
-        x += 100
+        screen.blit(to_blit, (x,y)) #displays all cards in the current player's hand
+        x += calculate_x_increment() #calculates the increment for x with the number of cards in their hand
     screen.blit(card_back, (400, 300))
-    screen.blit(top_discard(), (600, 300))
+    screen.blit(top_discard(), (600, 300)) #displays the top card in the discard pile to allow players to know what they can place down.
     pygame.display.update()
     clock.tick(60)
 
 def main(): #The main game rendering loop
+    global player_turn
     create_game()
     running = True
     screen.fill("black")
@@ -171,7 +209,19 @@ def main(): #The main game rendering loop
         pygame.display.update()
         clock.tick(60)
         turn()
-        #card_hider()
+        #TODO fix broken player counters
+        if reverse:
+            player_turn -= 1
+        else:
+            player_turn += 1
+
+        if player_turn < 0: #checks to see if the player counter goes out of range and corrects if it does
+            player_turn = len(players)
+        elif player_turn > len(players):
+            player_turn = 0
+
+        sleep(3)
+        card_hider()
 
 if __name__ == "__main__": #Ctrl-C error handling and initialisation of the game
     try:
